@@ -8,23 +8,18 @@ import {
   BadRequestException,
   Res,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-
+import { memoryStorage } from 'multer';
 import { Response } from 'express';
-import { diskStorage } from 'multer';
-import { FilesService } from './files.service';
 
-import { fileFilter, fileNamer } from './helpers';
+import { FilesService } from './files.service';
+import { fileFilter } from './helpers';
 
 @ApiTags('Files - Get and Upload')
 @Controller('files')
 export class FilesController {
-  constructor(
-    private readonly filesService: FilesService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly filesService: FilesService) {}
 
   @Get('product/:imageName')
   findProductImage(
@@ -40,11 +35,7 @@ export class FilesController {
   @UseInterceptors(
     FileInterceptor('file', {
       fileFilter: fileFilter,
-      // limits: { fileSize: 1000 }
-      storage: diskStorage({
-        destination: './static/products',
-        filename: fileNamer,
-      }),
+      storage: memoryStorage(),
     }),
   )
   uploadProductImage(@UploadedFile() file: Express.Multer.File) {
@@ -52,11 +43,6 @@ export class FilesController {
       throw new BadRequestException('Make sure that the file is an image');
     }
 
-    // const secureUrl = `${ file.filename }`;
-    const secureUrl = `${this.configService.get('HOST_API')}/files/product/${
-      file.filename
-    }`;
-
-    return { secureUrl, fileName: file.filename };
+    return this.filesService.uploadProductImage(file);
   }
 }
